@@ -79,6 +79,7 @@ sketches, constraints, dimensions, or timeline features.
 ## Engine updates
 
 This repository checks the upstream `stl2step` releases weekly. When a newer
-Windows engine is available, GitHub Actions downloads and validates it, updates
-the bundled executable and DLLs, and opens a pull request for review. The
-Fusion add-in code is not changed by that update.
+Windows engine is available, GitHub Actions downloads and validates it, then
+publishes the updated bundle to the `automation/update-engine` branch for review.
+The Fusion add-in code is not changed by that update. Merge that branch into
+`main` when the updated engine has been tested.
