@@ -80,5 +80,6 @@ sketches, constraints, dimensions, or timeline features.
 
 This repository checks the upstream `stl2step` releases weekly. When a newer
 Windows engine is available, GitHub Actions downloads and validates it, then
-opens a pull request containing the updated bundle for review. The Fusion
+opens a pull request containing the updated bundle. The PR is configured to
+auto-merge after the workflow succeeds and closes automatically. The Fusion
 add-in code is not changed by that update.

@@ -45,6 +45,7 @@ jobs:
           "ENGINE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Create update pull request
+        id: create-pr
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
@@ -57,3 +58,12 @@ jobs:
             Validated executable: `${{ env.ENGINE_VERSION }}`
           branch: automation/update-engine
           delete-branch: true
+
+      - name: Enable automatic merge
+        if: steps.create-pr.outputs.pull-request-number != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr merge ${{ steps.create-pr.outputs.pull-request-number }} `
+            --repo $env:GITHUB_REPOSITORY --auto --squash --delete-branch
