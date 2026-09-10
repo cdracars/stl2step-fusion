@@ -1,0 +1,13 @@
+{
+  "autodeskProduct": "Fusion360",
+  "type": "addin",
+  "id": "435cf070-2d83-4f1e-b37f-62f48c7850ea",
+  "author": "stl2step contributors",
+  "description": {
+    "": "Prototype: convert an STL to a STEP B-Rep solid with stl2step and import it into Fusion."
+  },
+  "version": "0.1.1-prototype",
+  "runOnStartup": true,
+  "supportedOS": "windows|mac",
+  "editEnabled": true
+}
