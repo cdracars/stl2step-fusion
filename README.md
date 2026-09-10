@@ -80,6 +80,5 @@ sketches, constraints, dimensions, or timeline features.
 
 This repository checks the upstream `stl2step` releases weekly. When a newer
 Windows engine is available, GitHub Actions downloads and validates it, then
-publishes the updated bundle to the `automation/update-engine` branch for review.
-The Fusion add-in code is not changed by that update. Merge that branch into
-`main` when the updated engine has been tested.
+opens a pull request containing the updated bundle for review. The Fusion
+add-in code is not changed by that update.

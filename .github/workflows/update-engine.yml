@@ -44,16 +44,16 @@ jobs:
           "UPSTREAM_TAG=$($release.tag_name)" | Out-File -FilePath $env:GITHUB_ENV -Append
           "ENGINE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Publish update branch
-        shell: pwsh
-        run: |
-          if (-not (git status --porcelain)) {
-            Write-Host "The bundled engine is already current."
-            exit 0
-          }
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B automation/update-engine
-          git add Stl2StepFusion/bin/windows-x86_64
-          git commit -m "Update bundled engine to $env:ENGINE_VERSION"
-          git push --force origin automation/update-engine
+      - name: Create update pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          commit-message: "Update bundled engine to ${{ env.ENGINE_VERSION }}"
+          title: "Update bundled stl2step engine to ${{ env.ENGINE_VERSION }}"
+          body: |
+            Automated weekly check against the upstream `BlinkingSun/stl2step` release.
+
+            Upstream release: `${{ env.UPSTREAM_TAG }}`
+            Validated executable: `${{ env.ENGINE_VERSION }}`
+          branch: automation/update-engine
+          delete-branch: true
