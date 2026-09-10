@@ -41,8 +41,8 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $version -notmatch '^stl2step \d+\.\d+\.\d+$') {
             throw "Engine validation failed (exit $LASTEXITCODE): $version"
           }
-          "UPSTREAM_TAG=$($release.tag_name)" | Out-File -FilePath (Join-Path $env:GITHUB_ENV) -Append
-          "ENGINE_VERSION=$version" | Out-File -FilePath (Join-Path $env:GITHUB_ENV) -Append
+          "UPSTREAM_TAG=$($release.tag_name)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "ENGINE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Create update pull request
         uses: peter-evans/create-pull-request@v7
