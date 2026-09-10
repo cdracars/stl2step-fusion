@@ -33,7 +33,7 @@ jobs:
           $destination = Join-Path $env:GITHUB_WORKSPACE 'Stl2StepFusion\bin\windows-x86_64'
           New-Item -ItemType Directory -Force -Path $destination | Out-Null
           Get-ChildItem -LiteralPath $destination -File | Remove-Item -Force
-          Copy-Item -LiteralPath (Join-Path $extract '*') -Destination $destination -Force
+          Get-ChildItem -LiteralPath $extract -File | Copy-Item -Destination $destination -Force
 
           $exe = Join-Path $destination 'stl2step.exe'
           if (-not (Test-Path -LiteralPath $exe)) { throw "Extracted release did not contain stl2step.exe" }
