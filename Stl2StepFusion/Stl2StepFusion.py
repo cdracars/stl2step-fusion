@@ -99,6 +99,7 @@ def _result_summary(result: dict) -> str:
         f"Cylinders recovered: {result.get('smoothCylinders', 0)}",
         f"Fillets recovered: {result.get('smoothFillets', 0)}",
         f"Elapsed: {result.get('seconds', 0):.2f}s",
+        f"Engine: {result.get('engineVersion', 'unknown')}",
     ]
     warnings = result.get("warnings") or []
     if warnings:
@@ -186,6 +187,12 @@ def _worker(input_path: str, units: str, mode: str) -> None:
             units=units,
             mode=mode,
         )
+        try:
+            payload["result"]["engineVersion"] = engine.version(executable)
+        except Exception:
+            # A conversion should remain successful if an older/custom
+            # executable does not implement --version.
+            payload["result"]["engineVersion"] = "unknown"
         payload["result"]["mode"] = "TrueForm" if mode == "trueform" else "Verbatim"
         payload["ok"] = True
     except Exception as exc:

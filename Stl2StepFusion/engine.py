@@ -20,6 +20,7 @@ class EngineError(RuntimeError):
 
 
 CONVERSION_TIMEOUT_SECONDS = 3600
+VERSION_TIMEOUT_SECONDS = 10
 
 
 def _bundled_relative_path() -> Path | None:
@@ -71,6 +72,25 @@ def parse_result(stdout: str) -> dict[str, Any]:
                 raise EngineError("RESULT payload was not a JSON object")
             return result
     raise EngineError("stl2step did not emit a RESULT line")
+
+
+def version(executable: Path) -> str:
+    """Return the version reported by the engine executable."""
+    completed = subprocess.run(
+        [str(executable), "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=VERSION_TIMEOUT_SECONDS,
+        creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                       if os.name == "nt" else 0),
+    )
+    reported = (completed.stdout or completed.stderr).strip()
+    if completed.returncode != 0 or not reported:
+        raise EngineError(
+            f"stl2step version check failed with exit code {completed.returncode}"
+        )
+    return reported.splitlines()[0]
 
 
 def convert(
