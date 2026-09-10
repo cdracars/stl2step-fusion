@@ -1,8 +1,9 @@
 # STL to STEP Solid for Autodesk Fusion 360
 
-This repository contains a standalone Windows add-in for Autodesk Fusion 360.
-It converts an STL mesh to a STEP B-Rep solid and opens the result in a new
-Fusion document. The currently open Fusion document is not modified.
+This project packages the open-source [`stl2step` engine](https://github.com/cdracars/stl2step)
+as a standalone Autodesk Fusion 360 add-in. It lets Fusion users select an STL,
+convert it to a STEP B-Rep solid, and open the result in a new Fusion document.
+The currently open Fusion document is not modified.
 
 ## Install on Windows
 
