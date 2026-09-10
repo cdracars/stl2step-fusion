@@ -1,0 +1,59 @@
+name: Update bundled stl2step engine
+
+on:
+  schedule:
+    - cron: "17 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-engine:
+    runs-on: windows-latest
+    steps:
+      - name: Check out Fusion add-in
+        uses: actions/checkout@v4
+
+      - name: Download latest upstream Windows engine
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $release = gh api repos/BlinkingSun/stl2step/releases/latest | ConvertFrom-Json
+          $asset = $release.assets | Where-Object { $_.name -match '^stl2step-engine-v.*-windows-x64\.zip$' } | Select-Object -First 1
+          if (-not $asset) { throw "No upstream Windows engine asset found in $($release.tag_name)" }
+
+          $download = Join-Path $env:RUNNER_TEMP $asset.name
+          gh release download $release.tag_name --repo BlinkingSun/stl2step --pattern $asset.name --dir $env:RUNNER_TEMP --clobber
+          $extract = Join-Path $env:RUNNER_TEMP 'stl2step-engine'
+          Expand-Archive -LiteralPath $download -DestinationPath $extract -Force
+
+          $destination = Join-Path $env:GITHUB_WORKSPACE 'Stl2StepFusion\bin\windows-x86_64'
+          New-Item -ItemType Directory -Force -Path $destination | Out-Null
+          Get-ChildItem -LiteralPath $destination -File | Remove-Item -Force
+          Copy-Item -LiteralPath (Join-Path $extract '*') -Destination $destination -Force
+
+          $exe = Join-Path $destination 'stl2step.exe'
+          if (-not (Test-Path -LiteralPath $exe)) { throw "Extracted release did not contain stl2step.exe" }
+          $version = (& $exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^stl2step \d+\.\d+\.\d+$') {
+            throw "Engine validation failed (exit $LASTEXITCODE): $version"
+          }
+          "UPSTREAM_TAG=$($release.tag_name)" | Out-File -FilePath (Join-Path $env:GITHUB_ENV) -Append
+          "ENGINE_VERSION=$version" | Out-File -FilePath (Join-Path $env:GITHUB_ENV) -Append
+
+      - name: Create update pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          commit-message: "Update bundled engine to ${{ env.ENGINE_VERSION }}"
+          title: "Update bundled stl2step engine to ${{ env.ENGINE_VERSION }}"
+          body: |
+            Automated weekly check against the upstream `BlinkingSun/stl2step` release.
+
+            Upstream release: `${{ env.UPSTREAM_TAG }}`
+            Validated executable: `${{ env.ENGINE_VERSION }}`
+          branch: automation/update-engine
+          delete-branch: true

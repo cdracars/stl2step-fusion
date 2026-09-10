@@ -75,3 +75,10 @@ build it themselves.
 
 The imported result is direct B-Rep geometry. It does not recreate Fusion
 sketches, constraints, dimensions, or timeline features.
+
+## Engine updates
+
+This repository checks the upstream `stl2step` releases weekly. When a newer
+Windows engine is available, GitHub Actions downloads and validates it, updates
+the bundled executable and DLLs, and opens a pull request for review. The
+Fusion add-in code is not changed by that update.
