@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0-prototype
 
 - Reworked conversion options into a native Fusion command dialog.
 - Added remembered units and conversion mode preferences.
