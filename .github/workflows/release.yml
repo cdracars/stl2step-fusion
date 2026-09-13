@@ -1,0 +1,42 @@
+name: Package release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate before packaging
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -v
+          python -m compileall -q Stl2StepFusion tests
+          $null = Get-Content Stl2StepFusion/Stl2StepFusion.manifest -Raw | ConvertFrom-Json -AsHashtable
+          $null = Get-Content engine-pin.json -Raw | ConvertFrom-Json
+      - name: Verify bundled engine version
+        shell: pwsh
+        run: |
+          $pin = Get-Content engine-pin.json -Raw | ConvertFrom-Json
+          $exe = Join-Path $env:GITHUB_WORKSPACE 'Stl2StepFusion/bin/windows-x86_64/stl2step.exe'
+          $reported = (& $exe --version).Trim()
+          if ($reported -ne "stl2step $($pin.engineVersion)") { throw "Bundled engine version mismatch: $reported" }
+      - name: Create release archive
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $archive = "stl2step-fusion-$tag-windows-x64.zip"
+          Compress-Archive -Path Stl2StepFusion,LICENSE,README.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md,licenses,engine-pin.json -DestinationPath $archive
+          $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $archive" | Set-Content "$archive.sha256"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: gh release create $env:GITHUB_REF_NAME stl2step-fusion-$env:GITHUB_REF_NAME-windows-x64.zip stl2step-fusion-$env:GITHUB_REF_NAME-windows-x64.zip.sha256 --generate-notes --verify-tag

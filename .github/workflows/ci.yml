@@ -1,0 +1,43 @@
+name: Validate add-in
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate Python syntax
+        run: python -m compileall -q Stl2StepFusion tests
+      - name: Run engine adapter tests
+        run: python -m unittest discover -s tests -v
+      - name: Validate add-in manifest
+        shell: pwsh
+        run: Get-Content Stl2StepFusion/Stl2StepFusion.manifest -Raw | ConvertFrom-Json -AsHashtable | Out-Null
+      - name: Validate distribution notices
+        shell: pwsh
+        run: |
+          if (-not (Test-Path THIRD_PARTY_NOTICES.md)) { throw "Missing third-party notices" }
+          if (-not (Test-Path licenses/README.md)) { throw "Missing license checklist" }
+      - name: Validate engine pin
+        shell: pwsh
+        run: |
+          $pin = Get-Content engine-pin.json -Raw | ConvertFrom-Json
+          if ($pin.upstreamRepository -ne 'BlinkingSun/stl2step') { throw "Unexpected engine repository" }
+          if ($pin.asset -notmatch '^stl2step-engine-v\d+\.\d+\.\d+-windows-x64\.zip$') { throw "Invalid engine asset name" }
+          if ($pin.sha256 -notmatch '^[0-9a-fA-F]{64}$') { throw "Invalid engine SHA-256" }
+      - name: Smoke-test bundled engine
+        shell: pwsh
+        run: |
+          $pin = Get-Content engine-pin.json -Raw | ConvertFrom-Json
+          $exe = Join-Path $env:GITHUB_WORKSPACE 'Stl2StepFusion/bin/windows-x86_64/stl2step.exe'
+          $reported = (& $exe --version).Trim()
+          if ($reported -ne "stl2step $($pin.engineVersion)") { throw "Bundled engine version mismatch: $reported" }

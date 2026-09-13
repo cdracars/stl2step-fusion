@@ -1,0 +1,8 @@
+{
+  "upstreamRepository": "BlinkingSun/stl2step",
+  "releaseTag": "v1.4.3",
+  "engineVersion": "1.4.3",
+  "asset": "stl2step-engine-v1.4.3-windows-x64.zip",
+  "sha256": "e7762ae52237cc48ebf427a662fbecb6ef43fa8d67d9fb8d4b6dd500c286e98b",
+  "minimumWindows": "10"
+}

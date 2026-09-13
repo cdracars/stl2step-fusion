@@ -1,0 +1,27 @@
+name: Conversion or installation problem
+description: Report a reproducible add-in problem.
+body:
+  - type: input
+    id: fusion-version
+    attributes:
+      label: Fusion 360 version
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include units, mode, and the exact error message.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or diagnostics
+      description: Remove confidential geometry and personal information.

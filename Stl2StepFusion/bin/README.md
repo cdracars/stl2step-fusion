@@ -7,7 +7,9 @@ under one of these directories:
 - `macos-arm64/`
 - `macos-x86_64/`
 
-For Windows, use `scripts/package-fusion-windows.ps1` from the repository root.
+The repository currently ships the Windows bundle directly; there is no local
+packaging script. Release automation replaces this directory with the
+validated Windows asset from the upstream release.
 Keeping the DLLs beside the executable is required for a portable add-in; do
 not rely on the developer machine's OCCT PATH. For development, setting
 `STL2STEP_EXECUTABLE` is usually faster than copying a build here.

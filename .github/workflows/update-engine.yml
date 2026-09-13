@@ -26,7 +26,25 @@ jobs:
           if (-not $asset) { throw "No upstream Windows engine asset found in $($release.tag_name)" }
 
           $download = Join-Path $env:RUNNER_TEMP $asset.name
+          $manifestDownload = Join-Path $env:RUNNER_TEMP 'engine-manifest.json'
+          $checksumsDownload = Join-Path $env:RUNNER_TEMP 'SHA256SUMS-engine.txt'
           gh release download $release.tag_name --repo BlinkingSun/stl2step --pattern $asset.name --dir $env:RUNNER_TEMP --clobber
+          gh release download $release.tag_name --repo BlinkingSun/stl2step --pattern engine-manifest.json --dir $env:RUNNER_TEMP --clobber
+          gh release download $release.tag_name --repo BlinkingSun/stl2step --pattern SHA256SUMS-engine.txt --dir $env:RUNNER_TEMP --clobber
+
+          $manifest = Get-Content -LiteralPath $manifestDownload -Raw | ConvertFrom-Json
+          $windowsAsset = $manifest.assets.'windows-x64'
+          if ($windowsAsset.name -ne $asset.name) {
+            throw "Manifest asset mismatch: expected $($asset.name), got $($windowsAsset.name)"
+          }
+          $actualHash = (Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $windowsAsset.sha256.ToLowerInvariant()) {
+            throw "Engine SHA-256 mismatch: expected $($windowsAsset.sha256), got $actualHash"
+          }
+          $checksumLine = Select-String -LiteralPath $checksumsDownload -Pattern ([regex]::Escape($asset.name)) | Select-Object -First 1
+          if (-not $checksumLine -or $checksumLine.Line -notmatch $actualHash) {
+            throw "SHA256SUMS-engine.txt does not contain the verified asset hash"
+          }
           $extract = Join-Path $env:RUNNER_TEMP 'stl2step-engine'
           Expand-Archive -LiteralPath $download -DestinationPath $extract -Force
 
@@ -43,6 +61,15 @@ jobs:
           }
           "UPSTREAM_TAG=$($release.tag_name)" | Out-File -FilePath $env:GITHUB_ENV -Append
           "ENGINE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $pin = [ordered]@{
+            upstreamRepository = 'BlinkingSun/stl2step'
+            releaseTag = $release.tag_name
+            engineVersion = ($version -replace '^stl2step\s+', '')
+            asset = $asset.name
+            sha256 = $actualHash
+            minimumWindows = $windowsAsset.minWindows
+          }
+          $pin | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $env:GITHUB_WORKSPACE 'engine-pin.json')
 
       - name: Create update pull request
         id: create-pr

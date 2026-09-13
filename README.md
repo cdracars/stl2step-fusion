@@ -1,9 +1,15 @@
 # STL to STEP Solid for Autodesk Fusion 360
 
-This project packages the open-source [`stl2step` engine](https://github.com/cdracars/stl2step)
+This project packages the open-source [`stl2step` engine](https://github.com/BlinkingSun/stl2step)
 as a standalone Autodesk Fusion 360 add-in. It lets Fusion users select an STL,
 convert it to a STEP B-Rep solid, and open the result in a new Fusion document.
 The currently open Fusion document is not modified.
+
+## Requirements and compatibility
+
+- Autodesk Fusion 360 for Windows with permission to install add-ins.
+- Windows x64. macOS is not currently packaged or supported by this add-in.
+- A Fusion **Design** document must be open when the command is started.
 
 ## Install on Windows
 
@@ -55,6 +61,16 @@ For large meshes, conversion can take several minutes. The progress dialog’s
 **Run in background** button lets Fusion remain usable while conversion runs;
 completion is reported in Fusion’s status bar and result dialog.
 
+## Known limitations
+
+- STL units are not reliably encoded in the STL format, so the units choice is
+  manual. Choosing the wrong units changes the imported size.
+- The result is direct B-Rep geometry, not a parametric Fusion feature tree.
+- Open, self-intersecting, or very large meshes may produce open shells, take a
+  long time, or fail to import.
+- The progress percentage is unavailable. “Run in background” hides the dialog;
+  it does not cancel the conversion.
+
 ## Troubleshooting
 
 - If **Stl2StepFusion** is not listed, confirm that you copied the inner
@@ -69,17 +85,30 @@ completion is reported in Fusion’s status bar and result dialog.
 ## Relationship to stl2step
 
 The conversion engine is maintained in the separate
-[stl2step repository](https://github.com/cdracars/stl2step). This Fusion repo
+[stl2step repository](https://github.com/BlinkingSun/stl2step). This Fusion repo
 contains a packaged Windows build of that engine so end users do not need to
 build it themselves.
 
 The imported result is direct B-Rep geometry. It does not recreate Fusion
 sketches, constraints, dimensions, or timeline features.
 
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the bundled engine,
+OCCT, runtime libraries, and their licensing requirements.
+The license-text checklist for binary releases is in [licenses/README.md](licenses/README.md).
+
+For contributors, see [CONTRIBUTING.md](CONTRIBUTING.md). Security issues
+should follow [SECURITY.md](SECURITY.md). Version history is in
+[CHANGELOG.md](CHANGELOG.md), and tagged releases include a SHA-256 checksum.
+
 ## Engine updates
 
-This repository checks the upstream `stl2step` releases weekly. When a newer
+This repository checks the upstream [`stl2step`](https://github.com/BlinkingSun/stl2step)
+releases weekly. When a newer
 Windows engine is available, GitHub Actions downloads and validates it, then
 opens a pull request containing the updated bundle. The PR is configured to
 auto-merge after the workflow succeeds and closes automatically. The Fusion
 add-in code is not changed by that update.
+
+The current engine provenance and SHA-256 pin are recorded in
+[engine-pin.json](engine-pin.json). Updates are accepted only when the
+upstream release manifest and checksum file agree with the downloaded asset.
