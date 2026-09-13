@@ -69,6 +69,23 @@ For large meshes, conversion can take several minutes. The progress dialog’s
 completion or cancellation is reported in Fusion’s status bar and result
 dialog.
 
+## Updating the add-in
+
+1. Finish or cancel any active conversion, then stop the add-in in Fusion’s
+   **Scripts and Add-Ins** dialog. Close and restart Fusion if Windows reports
+   that an add-in file is still in use.
+2. Download the newest Windows ZIP from the
+   [Releases](https://github.com/cdracars/stl2step-fusion/releases) page.
+   Use the release ZIP, not **Code → Download ZIP**; the source archive does
+   not contain the native conversion engine.
+3. Remove or rename the existing `Stl2StepFusion` folder in Fusion’s AddIns
+   directory, then extract the new release so the folder containing
+   `Stl2StepFusion.manifest` is installed there.
+4. Start Fusion and enable the updated add-in again.
+
+The add-in stores the last-used units and conversion mode in the user profile,
+outside the add-in folder, so updating does not reset those preferences.
+
 ## Known limitations
 
 - STL units are not reliably encoded in the STL format, so the units choice is
