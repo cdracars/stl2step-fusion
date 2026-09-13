@@ -31,8 +31,11 @@ jobs:
         run: |
           $tag = '${{ github.event.release.tag_name || inputs.tag }}'
           $archive = Join-Path $env:RUNNER_TEMP "stl2step-fusion-$tag-windows-x64.zip"
-          Compress-Archive -Path 'Stl2StepFusion','LICENSE','LICENSE.stl2step','README.md','CHANGELOG.md','THIRD_PARTY_NOTICES.md','licenses','config' -DestinationPath $archive -Force
+          Compress-Archive -Path 'Stl2StepFusion','ENGINE_CONTRACT.md','LICENSE','LICENSE.stl2step','README.md','CHANGELOG.md','THIRD_PARTY_NOTICES.md','licenses','config' -DestinationPath $archive -Force
           "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Verify add-in archive
+        shell: pwsh
+        run: python scripts/verify_release_archive.py $env:ARCHIVE --addon-dir Stl2StepFusion
       - name: Upload add-in archive
         env:
           GH_TOKEN: ${{ github.token }}
