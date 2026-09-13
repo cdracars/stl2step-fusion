@@ -19,6 +19,8 @@ is not a Python dependency and is not committed to this source repository.
 - A reported success without a STEP file is an error.
 - Successful output is opened as a new Fusion document. The source document is
   not modified.
+- The completion summary includes the generated STEP path while it remains
+  available for recovery.
 - The host communicates conversion and import as distinct user-facing phases.
 - Temporary files are removed after successful import or cancellation. If
   conversion succeeds but Fusion cannot import the result, the STEP file is

@@ -145,6 +145,7 @@ def _result_summary(result: dict) -> str:
         "The STEP geometry was imported.",
         f"Source: {result.get('inputName', 'selected STL')}",
         f"Output document: {result.get('outputName', 'new Fusion document')}",
+        f"Output STEP: {result.get('stepPath', 'temporary file')}",
         f"Mode: {result.get('mode', 'TrueForm')}",
         "",
         f"Triangles: {result.get('triangles', 0)}",
@@ -258,6 +259,7 @@ def _worker(input_path: str, units: str, mode: str) -> None:
         payload["result"]["mode"] = "TrueForm" if mode == "trueform" else "Verbatim"
         payload["result"]["inputName"] = Path(input_path).name
         payload["result"]["outputName"] = output_path.name
+        payload["result"]["stepPath"] = str(output_path)
         payload["ok"] = True
     except engine.EngineCancelled as exc:
         payload["cancelled"] = True
