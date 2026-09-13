@@ -208,6 +208,8 @@ class ConversionCompletedHandler(adsk.core.CustomEventHandler):
             if imported_document is None:
                 raise RuntimeError("Fusion could not open the generated STEP")
 
+            payload["result"]["outputName"] = imported_document.name
+            payload["result"]["stepPath"] = payload["stepPath"]
             _ui.messageBox(_result_summary(payload["result"]), COMMAND_NAME)
         except Exception as exc:
             if payload.get("ok"):
