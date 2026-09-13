@@ -7,9 +7,10 @@ under one of these directories:
 - `macos-arm64/`
 - `macos-x86_64/`
 
-The repository currently ships the Windows bundle directly; there is no local
-packaging script. Release automation replaces this directory with the
-validated Windows asset from the upstream release.
+Engine binaries are intentionally not committed to source. Release and CI
+automation downloads the exact release recorded in
+`config/engine-release.json`, verifies the upstream manifest and SHA-256, and
+places the validated files here during packaging.
 Keeping the DLLs beside the executable is required for a portable add-in; do
 not rely on the developer machine's OCCT PATH. For development, setting
 `STL2STEP_EXECUTABLE` is usually faster than copying a build here.

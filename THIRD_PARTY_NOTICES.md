@@ -21,7 +21,7 @@ should be recorded from the upstream release manifest when available.
 | `z.dll` | [zlib](https://zlib.net/) 1.3.2 | zlib license and notices |
 | `msvcp140.dll`, `vcruntime140*.dll` | Microsoft Visual C++ Redistributable 14.44.35211.0 | Redistributable under Microsoft’s applicable terms; confirm the release asset includes the required notice |
 
-The version numbers above were read from the current checked-in binaries. A
+The version numbers above were read from the release-vendored binaries. A
 future engine update must refresh this table and its license files if the
 dependency set or versions change.
 
@@ -48,3 +48,4 @@ The linked project pages are the authoritative locations for the full license
 texts. Before publishing a release, copy the applicable license texts into the
 release artifact or provide a stable written source offer for the LGPL-covered
 OCCT components, and confirm the Microsoft runtime redistribution terms.
+

@@ -3,3 +3,6 @@ __pycache__/
 .pytest_cache/
 .venv/
 env/
+Stl2StepFusion/bin/windows-x86_64/*
+!Stl2StepFusion/bin/windows-x86_64/.gitkeep
+

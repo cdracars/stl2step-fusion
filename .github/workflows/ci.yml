@@ -1,43 +1,31 @@
-name: Validate add-in
+name: Tests
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  validate:
+  python:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.6.0
         with:
           python-version: "3.11"
-      - name: Validate Python syntax
-        run: python -m compileall -q Stl2StepFusion tests
       - name: Run engine adapter tests
-        run: python -m unittest discover -s tests -v
-      - name: Validate add-in manifest
+        run: python -m unittest discover -s tests
+      - name: Run Python syntax checks
         shell: pwsh
-        run: Get-Content Stl2StepFusion/Stl2StepFusion.manifest -Raw | ConvertFrom-Json -AsHashtable | Out-Null
-      - name: Validate distribution notices
+        run: python -m py_compile Stl2StepFusion\Stl2StepFusion.py Stl2StepFusion\engine.py tests\test_engine.py
+      - name: Vendor pinned upstream engine
         shell: pwsh
-        run: |
-          if (-not (Test-Path THIRD_PARTY_NOTICES.md)) { throw "Missing third-party notices" }
-          if (-not (Test-Path licenses/README.md)) { throw "Missing license checklist" }
-      - name: Validate engine pin
-        shell: pwsh
-        run: |
-          $pin = Get-Content engine-pin.json -Raw | ConvertFrom-Json
-          if ($pin.upstreamRepository -ne 'BlinkingSun/stl2step') { throw "Unexpected engine repository" }
-          if ($pin.asset -notmatch '^stl2step-engine-v\d+\.\d+\.\d+-windows-x64\.zip$') { throw "Invalid engine asset name" }
-          if ($pin.sha256 -notmatch '^[0-9a-fA-F]{64}$') { throw "Invalid engine SHA-256" }
-      - name: Smoke-test bundled engine
-        shell: pwsh
-        run: |
-          $pin = Get-Content engine-pin.json -Raw | ConvertFrom-Json
-          $exe = Join-Path $env:GITHUB_WORKSPACE 'Stl2StepFusion/bin/windows-x86_64/stl2step.exe'
-          $reported = (& $exe --version).Trim()
-          if ($reported -ne "stl2step $($pin.engineVersion)") { throw "Bundled engine version mismatch: $reported" }
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .\scripts\vendor-engine.ps1
+

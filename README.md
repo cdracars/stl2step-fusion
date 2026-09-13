@@ -48,18 +48,19 @@ Python, OpenCASCADE, PATH setting, or build step is required.
 ## Using the add-in
 
 1. Click **STL to STEP Solid**.
-2. Choose an `.stl` file.
-3. Choose the STL units: millimetres or inches.
-4. Choose a conversion mode:
-   - **TrueForm** (recommended) recovers editable planes, cylinders, and
+2. Choose the STL units: millimetres or inches.
+3. Choose a conversion mode:
+   - **TrueForm** (recommended) recovers analytic planes, cylinders, and
      fillets where possible.
    - **Verbatim** preserves the original faceted STL surfaces and is usually
      faster.
+4. Click **OK**, then choose an `.stl` file.
 5. Wait for conversion to finish. The STEP opens as a new Fusion document.
 
 For large meshes, conversion can take several minutes. The progress dialog’s
-**Run in background** button lets Fusion remain usable while conversion runs;
-completion is reported in Fusion’s status bar and result dialog.
+**Cancel** button stops the converter and cleans up its temporary files;
+completion or cancellation is reported in Fusion’s status bar and result
+dialog.
 
 ## Known limitations
 
@@ -68,8 +69,8 @@ completion is reported in Fusion’s status bar and result dialog.
 - The result is direct B-Rep geometry, not a parametric Fusion feature tree.
 - Open, self-intersecting, or very large meshes may produce open shells, take a
   long time, or fail to import.
-- The progress percentage is unavailable. “Run in background” hides the dialog;
-  it does not cancel the conversion.
+- The progress percentage is unavailable. **Cancel** stops the converter and
+  cleans up its temporary files.
 
 ## Troubleshooting
 
@@ -110,5 +111,6 @@ auto-merge after the workflow succeeds and closes automatically. The Fusion
 add-in code is not changed by that update.
 
 The current engine provenance and SHA-256 pin are recorded in
-[engine-pin.json](engine-pin.json). Updates are accepted only when the
+[config/engine-release.json](config/engine-release.json). Updates are accepted only when the
 upstream release manifest and checksum file agree with the downloaded asset.
+
