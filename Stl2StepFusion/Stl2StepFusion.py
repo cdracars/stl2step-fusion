@@ -8,6 +8,7 @@ toolbar command has ended.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -36,6 +37,9 @@ COMMAND_DESCRIPTION = (
 PANEL_ID = "SolidScriptsAddinsPanel"
 DESIGN_WORKSPACE_ID = "FusionSolidEnvironment"
 COMPLETED_EVENT_ID = "cdracars_stl2step_fusion_completed"
+UNITS_INPUT_ID = "stl2step_units"
+MODE_INPUT_ID = "stl2step_mode"
+PREFERENCES_FILENAME = "stl2step-fusion-preferences.json"
 
 _app = None
 _ui = None
@@ -45,6 +49,25 @@ _handlers = []
 _workers = set()
 _conversion_in_progress = False
 _progress_dialog = None
+_cancel_event = None
+
+
+class _CancelSignal:
+    """Thread-safe cancellation signal with Fusion progress integration."""
+
+    def __init__(self):
+        self._event = threading.Event()
+
+    def cancel(self):
+        self._event.set()
+
+    def is_set(self):
+        if self._event.is_set():
+            return True
+        try:
+            return bool(_progress_dialog and _progress_dialog.wasCancelled)
+        except RuntimeError:
+            return True
 
 
 def _show_error(message: str) -> None:
@@ -86,9 +109,42 @@ def _short_error(prefix: str, exc: Exception) -> str:
     return f"{prefix}: {detail}"
 
 
+def _preferences_path() -> Path:
+    if os.name == "nt":
+        root = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+        return root / "stl2step-fusion" / PREFERENCES_FILENAME
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "stl2step-fusion" / PREFERENCES_FILENAME
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "stl2step-fusion" / PREFERENCES_FILENAME
+
+
+def _load_preferences() -> dict[str, str]:
+    try:
+        preferences = json.loads(_preferences_path().read_text(encoding="utf-8"))
+        if not isinstance(preferences, dict):
+            return {}
+        valid = {"mm", "in", "trueform", "verbatim"}
+        return {key: value for key, value in preferences.items()
+                if key in {"units", "mode"} and value in valid}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _save_preferences(units: str, mode: str) -> None:
+    try:
+        path = _preferences_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"units": units, "mode": mode}, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        # Preferences are a convenience and must never prevent conversion.
+        pass
+
+
 def _result_summary(result: dict) -> str:
     lines = [
         "The STEP geometry was imported.",
+        f"Source: {result.get('inputName', 'selected STL')}",
+        f"Output document: {result.get('outputName', 'new Fusion document')}",
         f"Mode: {result.get('mode', 'TrueForm')}",
         "",
         f"Triangles: {result.get('triangles', 0)}",
@@ -125,6 +181,9 @@ class ConversionCompletedHandler(adsk.core.CustomEventHandler):
             # Close the progress UI before presenting the result. Otherwise
             # Fusion stacks the completion modal over the old progress dialog.
             _hide_progress()
+            if payload.get("cancelled"):
+                _set_status("STL to STEP: conversion cancelled")
+                return
             if not payload.get("ok"):
                 _show_error(
                     "Conversion failed.\n\n"
@@ -132,6 +191,7 @@ class ConversionCompletedHandler(adsk.core.CustomEventHandler):
                 )
                 return
 
+            _set_status("STL to STEP: importing generated STEP into a new document…")
             if _ui.activeCommand != "SelectCommand":
                 select_command = _ui.commandDefinitions.itemById("SelectCommand")
                 if select_command:
@@ -162,9 +222,10 @@ class ConversionCompletedHandler(adsk.core.CustomEventHandler):
             _hide_progress()
             if payload.get("ok") and not preserve_temp_directory:
                 _set_status("STL to STEP: complete — new document opened")
-            _conversion_in_progress = False
             if not preserve_temp_directory:
                 _remove_temp_directory(payload)
+            global _cancel_event
+            _cancel_event = None
 
 
 def _worker(input_path: str, units: str, mode: str) -> None:
@@ -186,6 +247,7 @@ def _worker(input_path: str, units: str, mode: str) -> None:
             output_path,
             units=units,
             mode=mode,
+            cancel_event=_cancel_event,
         )
         try:
             payload["result"]["engineVersion"] = engine.version(executable)
@@ -194,20 +256,29 @@ def _worker(input_path: str, units: str, mode: str) -> None:
             # executable does not implement --version.
             payload["result"]["engineVersion"] = "unknown"
         payload["result"]["mode"] = "TrueForm" if mode == "trueform" else "Verbatim"
+        payload["result"]["inputName"] = Path(input_path).name
+        payload["result"]["outputName"] = output_path.name
         payload["ok"] = True
+    except engine.EngineCancelled as exc:
+        payload["cancelled"] = True
+        payload["error"] = str(exc)
     except Exception as exc:
         payload["error"] = str(exc)
+    try:
+        _app.fireCustomEvent(COMPLETED_EVENT_ID, json.dumps(payload))
+    except Exception:
+        # The completion handler owns the normal state transition. If Fusion
+        # is shutting down and the event cannot be queued, avoid leaving the
+        # add-in permanently busy.
+        _conversion_in_progress = False
+        raise
     finally:
-        try:
-            _app.fireCustomEvent(COMPLETED_EVENT_ID, json.dumps(payload))
-        finally:
-            _conversion_in_progress = False
         _workers.discard(current_thread)
 
 
 class ExecuteHandler(adsk.core.CommandEventHandler):
-    def notify(self, _args):
-        global _conversion_in_progress
+    def notify(self, args):
+        global _conversion_in_progress, _cancel_event
         try:
             if _conversion_in_progress:
                 _show_error("A conversion is already in progress. Please wait for it to finish.")
@@ -218,45 +289,28 @@ class ExecuteHandler(adsk.core.CommandEventHandler):
                 _show_error("Open or create a Fusion Design before running this command.")
                 return
 
+            inputs = args.command.commandInputs
+            units_input = inputs.itemById(UNITS_INPUT_ID)
+            mode_input = inputs.itemById(MODE_INPUT_ID)
+            if not units_input or not mode_input:
+                raise RuntimeError("Conversion options were not initialized")
+
             file_dialog = _ui.createFileDialog()
             file_dialog.title = "Choose an STL — result opens as a new Fusion document"
             file_dialog.filter = "STL mesh (*.stl)"
             if file_dialog.showOpen() != adsk.core.DialogResults.DialogOK:
                 return
 
-            buttons = adsk.core.MessageBoxButtonTypes.YesNoCancelButtonType
-            choice = _ui.messageBox(
-                "The converted STEP will open in a NEW Fusion document.\n"
-                "Your currently open document will not be modified.\n\n"
-                "Does this STL use millimetres?\n\n"
-                "Yes = millimetres\nNo = inches\nCancel = stop",
-                COMMAND_NAME,
-                buttons,
-            )
-            if choice == adsk.core.DialogResults.DialogCancel:
-                return
-            units = "mm" if choice == adsk.core.DialogResults.DialogYes else "in"
-
-            mode_choice = _ui.messageBox(
-                "How should this STL be converted?\n\n"
-                "Recommended — TrueForm\n"
-                "Recovers editable planes, cylinders, and fillets.\n\n"
-                "Verbatim\n"
-                "Preserves the original STL facets and is usually faster.\n\n"
-                "Yes = TrueForm (Recommended)\n"
-                "No = Verbatim\n"
-                "Cancel = stop",
-                COMMAND_NAME,
-                buttons,
-            )
-            if mode_choice == adsk.core.DialogResults.DialogCancel:
-                return
-            mode = "trueform" if mode_choice == adsk.core.DialogResults.DialogYes else "verbatim"
+            units = "mm" if units_input.selectedItem.index == 0 else "in"
+            mode = "trueform" if mode_input.selectedItem.index == 0 else "verbatim"
+            _save_preferences(units, mode)
 
             _conversion_in_progress = True
+            _cancel_event = _CancelSignal()
             global _progress_dialog
             _progress_dialog = _ui.createProgressDialog()
-            _progress_dialog.cancelButtonText = "Run in background"
+            _progress_dialog.cancelButtonText = "Cancel"
+            _progress_dialog.isCancelButtonShown = True
             _progress_dialog.show(
                 "STL to STEP",
                 f"Conversion in progress: {Path(file_dialog.filename).name}\n\n"
@@ -280,11 +334,45 @@ class ExecuteHandler(adsk.core.CommandEventHandler):
         except Exception as exc:
             _hide_progress()
             _conversion_in_progress = False
+            _cancel_event = None
             _show_error(_short_error("Could not start conversion", exc))
 
 
 class CommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
     def notify(self, args):
+        inputs = args.command.commandInputs
+        preferences = _load_preferences()
+        units = inputs.addDropDownCommandInput(
+            UNITS_INPUT_ID,
+            "STL units",
+            adsk.core.DropDownStyles.TextListDropDownStyle,
+        )
+        units.listItems.add(
+            "Millimetres (mm)", preferences.get("units", "mm") == "mm",
+            "STL has millimetre dimensions",
+        )
+        units.listItems.add(
+            "Inches (in)", preferences.get("units") == "in",
+            "STL has inch dimensions",
+        )
+
+        mode = inputs.addDropDownCommandInput(
+            MODE_INPUT_ID,
+            "Conversion mode",
+            adsk.core.DropDownStyles.TextListDropDownStyle,
+        )
+        mode.listItems.add(
+            "TrueForm (recommended)",
+            preferences.get("mode", "trueform") == "trueform",
+            "Recover analytic planes, cylinders, and fillets where possible",
+        )
+        mode.listItems.add(
+            "Verbatim (preserve facets)",
+            preferences.get("mode") == "verbatim",
+            "Preserve the original faceted STL surfaces",
+        )
+        args.command.isCancelButtonVisible = True
+        args.command.cancelButtonText = "Cancel"
         handler = ExecuteHandler()
         args.command.execute.add(handler)
         _handlers.append(handler)
@@ -350,8 +438,16 @@ def run(_context):
 
 
 def stop(_context):
-    global _completed_event, _command_definition
+    global _completed_event, _command_definition, _conversion_in_progress, _cancel_event
     try:
+        # Signal the worker before tearing down Fusion event handlers. The
+        # worker will terminate the child process and gracefully handle the
+        # completion event becoming unavailable during Fusion shutdown.
+        if _cancel_event:
+            _cancel_event.cancel()
+        _conversion_in_progress = False
+        _hide_progress()
+
         if _ui:
             panel = _ui.allToolbarPanels.itemById(PANEL_ID)
             if panel:

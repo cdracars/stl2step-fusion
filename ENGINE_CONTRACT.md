@@ -19,9 +19,12 @@ is not a Python dependency and is not committed to this source repository.
 - A reported success without a STEP file is an error.
 - Successful output is opened as a new Fusion document. The source document is
   not modified.
+- The host communicates conversion and import as distinct user-facing phases.
 - Temporary files are removed after successful import or cancellation. If
   conversion succeeds but Fusion cannot import the result, the STEP file is
   retained and its path is shown for recovery.
+- Unloading the add-in signals cancellation so the native engine process does
+  not remain running after Fusion removes the add-in UI.
 
 ## Cross-CAD parity
 
@@ -38,4 +41,3 @@ matrix for both wrappers.
 The pinned engine release and checksum are defined in
 [`config/engine-release.json`](config/engine-release.json). Release packaging
 vendors that exact asset and includes the upstream license and runtime notices.
-

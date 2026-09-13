@@ -13,7 +13,10 @@ The currently open Fusion document is not modified.
 
 ## Install on Windows
 
-1. Download this repository as a ZIP using **Code → Download ZIP** on GitHub.
+1. Download the latest Windows release ZIP from the repository’s
+   [Releases page](https://github.com/cdracars/stl2step-fusion/releases).
+   The source ZIP from **Code → Download ZIP** does not include the native
+   engine bundle and is intended for development only.
 
 2. Extract the ZIP. Open the extracted folder, then open its `Stl2StepFusion`
    folder. This is the folder that contains `Stl2StepFusion.manifest`.
@@ -22,8 +25,8 @@ The currently open Fusion document is not modified.
 
    `%APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns`
 
-   You can paste the path into File Explorer’s address bar. The final layout
-   must look like this:
+   You can paste the path into File Explorer’s address bar. The release
+   archive’s layout must look like this:
 
    ```text
    %APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns\Stl2StepFusion\
@@ -32,6 +35,9 @@ The currently open Fusion document is not modified.
        engine.py
        bin\windows-x86_64\stl2step.exe
        bin\windows-x86_64\*.dll
+   LICENSE.stl2step
+   THIRD_PARTY_NOTICES.md
+   licenses\
    ```
 
 4. Start or restart Fusion 360.
@@ -42,8 +48,9 @@ The currently open Fusion document is not modified.
 6. Close the Scripts and Add-Ins window. In the **Utilities** workspace, click
    **STL to STEP Solid**.
 
-The add-in includes the converter and required OCCT runtime DLLs. No separate
-Python, OpenCASCADE, PATH setting, or build step is required.
+The release archive includes the converter and required OCCT runtime DLLs. No
+separate Python, OpenCASCADE, PATH setting, or build step is required. The
+source checkout intentionally does not contain native engine binaries.
 
 ## Using the add-in
 
@@ -100,6 +107,12 @@ The license-text checklist for binary releases is in [licenses/README.md](licens
 For contributors, see [CONTRIBUTING.md](CONTRIBUTING.md). Security issues
 should follow [SECURITY.md](SECURITY.md). Version history is in
 [CHANGELOG.md](CHANGELOG.md), and tagged releases include a SHA-256 checksum.
+The engine behavior contract is documented in
+[ENGINE_CONTRACT.md](ENGINE_CONTRACT.md).
+The manual Fusion validation checklist is in
+[docs/FUSION_SMOKE_TEST.md](docs/FUSION_SMOKE_TEST.md).
+The cross-CAD scenario matrix is in
+[docs/SCENARIO_MATRIX.md](docs/SCENARIO_MATRIX.md).
 
 ## Engine updates
 

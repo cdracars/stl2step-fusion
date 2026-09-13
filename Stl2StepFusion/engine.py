@@ -11,12 +11,18 @@ import os
 import platform
 import shutil
 import subprocess
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
 
 class EngineError(RuntimeError):
     """The converter could not be located or did not produce a usable result."""
+
+
+class EngineCancelled(EngineError):
+    """The converter was stopped at the user's request."""
 
 
 CONVERSION_TIMEOUT_SECONDS = 3600
@@ -93,6 +99,68 @@ def version(executable: Path) -> str:
     return reported.splitlines()[0]
 
 
+def _run_conversion_process(
+    command: list[str],
+    *,
+    cancel_event=None,
+) -> subprocess.CompletedProcess[str]:
+    """Run the CLI while allowing the host to terminate it safely."""
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                       if os.name == "nt" else 0),
+    )
+    deadline = time.monotonic() + CONVERSION_TIMEOUT_SECONDS
+    communication = {}
+    communication_done = threading.Event()
+
+    def collect_output():
+        try:
+            communication["result"] = process.communicate()
+        except BaseException as exc:  # pragma: no cover - defensive worker cleanup
+            communication["error"] = exc
+        finally:
+            communication_done.set()
+
+    # Drain both pipes while the process runs. Waiting until the end can fill a
+    # native pipe buffer and make the converter appear to hang.
+    collector = threading.Thread(target=collect_output, name="stl2step-output", daemon=True)
+    collector.start()
+    try:
+        while True:
+            if cancel_event is not None and cancel_event.is_set():
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=5)
+                communication_done.wait(5)
+                raise EngineCancelled("Conversion cancelled")
+            if time.monotonic() >= deadline:
+                process.kill()
+                process.wait(timeout=5)
+                communication_done.wait(5)
+                raise EngineError(
+                    f"stl2step conversion exceeded {CONVERSION_TIMEOUT_SECONDS} seconds"
+                )
+            if communication_done.wait(0.1):
+                break
+        if "error" in communication:
+            raise communication["error"]
+        stdout, stderr = communication["result"]
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    except Exception:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+        communication_done.wait(5)
+        raise
+
+
 def convert(
     executable: Path,
     input_stl: Path,
@@ -100,6 +168,7 @@ def convert(
     *,
     units: str,
     mode: str = "trueform",
+    cancel_event=None,
 ) -> dict[str, Any]:
     if units not in {"mm", "in"}:
         raise ValueError(f"unsupported STL units: {units}")
@@ -118,18 +187,7 @@ def convert(
         "--units",
         units,
     ]
-    completed = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=CONVERSION_TIMEOUT_SECONDS,
-        # Fusion is a GUI process. Without this flag, Windows opens a blank
-        # console window for the console-subsystem converter and makes a
-        # completed conversion look like a hung add-in.
-        creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0)
-                       if os.name == "nt" else 0),
-    )
+    completed = _run_conversion_process(command, cancel_event=cancel_event)
 
     try:
         result = parse_result(completed.stdout)
