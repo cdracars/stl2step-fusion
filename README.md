@@ -144,3 +144,7 @@ The current engine provenance and SHA-256 pin are recorded in
 [config/engine-release.json](config/engine-release.json). Updates are accepted only when the
 upstream release manifest and checksum file agree with the downloaded asset.
 
+## Support
+
+If STL to STEP for Fusion 360 is useful to you, you can support its continued
+upkeep on [Ko-fi](https://ko-fi.com/cdracars66494).
