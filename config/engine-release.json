@@ -1,8 +1,8 @@
 {
-  "size": 16915659,
-  "sha256": "fe9035ec9b7a1d47eea77fae85566ae0f6385147849f61efbff6583c0bfda71d",
+  "size": 16969659,
+  "engineVersion": "1.9.0",
   "upstreamRepository": "BlinkingSun/stl2step",
-  "asset": "stl2step-engine-v1.8.0-windows-x64.zip",
-  "tag": "v1.8.0",
-  "engineVersion": "1.8.0"
+  "asset": "stl2step-engine-v1.9.0-windows-x64.zip",
+  "tag": "v1.9.0",
+  "sha256": "ed6d5f6dedc96cd945f3b376a3eafa4084b71ef4b1c43786b3c6a97e75835489"
 }
